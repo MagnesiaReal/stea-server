@@ -1,0 +1,28 @@
+{
+  "name": "stea-server",
+  "version": "1.0.0",
+  "description": "server for stea",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MagnesiaReal/stea-server.git"
+  },
+  "author": "TonyEmmanuelAngel",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MagnesiaReal/stea-server/issues"
+  },
+  "homepage": "https://github.com/MagnesiaReal/stea-server#readme",
+  "dependencies": {
+    "bcrypt": "^5.0.1",
+    "body-parser": "^1.19.1",
+    "cors": "^2.8.5",
+    "express": "^4.17.2",
+    "mysql": "^2.18.1"
+  }
+}
