@@ -2,16 +2,20 @@ express = require('express');
 bodyParser = require('body-parser');
 mysql = require('mysql');
 cors =  require('cors');
-console.log("Hello to STEA server");
 userRouter = require('./routes/user');
+uuid = require('uuid');
 
-const port = 50000;
+logger = require('simple-node-logger').createSimpleLogger('./magnecia_logs/server.log');
+
+logger.info("Trying to start server");
+
+const port = 80;
 
 conn = mysql.createConnection({
   host: "localhost",
   user: "root",
   password: "1204",
-  database: "steadb",
+  database: "SteaDB",
   multipleStatements: true
 });
 
@@ -24,13 +28,18 @@ app = express();
 app.use(express.json()); // Parser data as Json
 app.use(express.urlencoded({extended: true}));
 app.use(cors());
-app.use('/routers', userRouter);
+app.use('/routes', userRouter);
+
+//ruta estatica
+app.use(express.static('/home/magneciareal/Desktop/stea_data'));
 
 app.get('/', (req, res) => {
   res.json({mensaje : "Bienvenido al servidor Franchesco Virgoliniiiiiii!!!!!!!!! FIIIUUUM"});
-  console.log("SomeOne Enter to server");
+  console.log("SomeOne Enter to Franchesco FIIIIIUUUUUUUUMMMMMMMMMM");
+  console.log(req.body);
 });
 
 app.listen(port, ()=>{
-  console.log("Server already up to listen any request");
+  logger.warn("simple warn alv");
+  logger.info("Server alredy up to listen any request");
 });
