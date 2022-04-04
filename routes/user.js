@@ -1,14 +1,31 @@
 const express = require('express');
-router = express.Router()
-bcrypt = require('bcrypt')
+router = express.Router();
+bcrypt = require('bcrypt');
 
 nodemailer = require('nodemailer');
 randomstring = require('randomstring');
 
+
+// #######################################################
+// ############# GENERAL VARIABLES #######################
+// #######################################################
+let verifications = [];
+let changePasswords = [];
+let timerId = null;
+let timerIdPass = null;
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: 'stea.tesis.a003@gmail.com',
+    pass: 'steatesisA003'
+  }
+});
+
 // #######################################################
 // ####################### LOGIN USER ####################
 // #######################################################
-router.post('/login', (req, res) => {
+router.put('/login', (req, res) => {
 
   logger.info("LOGIN>> checking credentials");
 
@@ -30,6 +47,11 @@ router.post('/login', (req, res) => {
           
           let userData = data[0];
           delete userData.pass;
+
+          if(userData.uuid === null) { // this mecanism works if user logout in all sessions
+            userData.uuid = uuid.v4();
+          }
+
           res.status(200);
           res.json({
             message: "Ok you've been verified, take your user data :)",
@@ -57,20 +79,150 @@ router.post('/login', (req, res) => {
 
 });
 
+function sendRecoverPassMail(req, res) {
+  
+  const code = randomstring.generate(40);
+  const recoveryUrl = `${req.body.fullUrl}/changepass/${code}`;
+  console.log(recoveryUrl);  
+
+  const mailOptions = {
+    from: 'stea.tesis.a003@gmail.com',
+    to: req.body.email,
+    subject: 'STEA Recover password',
+    html: `<h1>Este enlace expirara en 30 minutos !!!!!!</h1><br/> Url de recuperación: ${recoveryUrl}`
+  };
+  
+  transporter.sendMail(mailOptions, (err, info) => {
+     if (err) {
+
+      logger.error("REGISTER>> error: ", err);
+      res.status(401);
+      res.json({
+        message: "Invalid email or doesn't exist for recover pass"
+      });
+
+    } else {
+
+      logger.info("LOGIN>> forgot password sent: ", info.response);
+      
+      changePasswords.push({email: req.body.email, code: code});
+      if (timerIdPass == null) {
+
+        timerIdPass = setInterval(()=>{
+
+          if(changePasswords.length) changePasswords.shift();
+          else {
+
+            clearInterval(timerIdPass);
+            timerIdPass = null;
+
+          }
+
+        }, 1800000);  
+
+      }
+
+      logger.info("LOGIN>> The user has thirty minuts to change the pasword");
+      res.status(200);
+      res.json({
+        message: "We sent a mail to recover your password"
+      });
+
+    }
+   
+
+    
+  });
+
+  
+}
+
+router.post('/forgotpass', (req, res)=> {
+ 
+  let sql = `SELECT * FROM Usuario WHERE email=?`;
+
+  conn.query(sql, [req.body.email], (err,data)=> {
+    if(err) throw err;
+
+    if(data.length) sendRecoverPassMail(req, res);
+    else {
+      
+      res.status(401);
+      res.json({message: "This user doesn't exist"});
+
+    }
+    
+  });
+
+});
+
+
+router.post('/verifychangepass', (req, res) => {
+  
+  changePassword = changePasswords.find(p => p.code === req.body.code);
+
+  if(changePassword) {
+    logger.info("VERIFYCHANGEPASS>> code is real")
+    res.status(200);
+    res.json({
+      message: "Request exist",
+      email: changePassword.email
+    });
+
+  } else {
+    logger.info("VERIFYCHANGEPASS>> hmmm error code or email expired");
+    res.status(401);
+    res.json({
+      message: "Invalid Request"
+    });
+
+  }
+
+});
+
+
+router.post('/changepass', (req, res)=> {
+  
+  bcrypt.hash(req.body.pass, 10, (err, hash) => {
+    if(err) throw err;
+    
+    let sql = `UPDATE Usuario SET pass=?, uuid=NULL WHERE email=?`;
+    
+    changePassword = changePasswords.find(p => p.code === req.body.code);
+
+    values = [
+      hash,
+      changePassword.email
+    ];
+    
+    conn.query(sql, values, (err, data)=> {
+      if(err) {
+        res.status(500);
+        res.json({message: "Internal Error"});
+        throw err;
+      }
+      
+      if(data.affectedRows) {
+        
+        logger.info("CHANGEPASS>> Password changed");
+        res.status(200);
+        res.json({message: "Password changed successfully"});
+
+      } else { 
+        
+        res.status(401);
+        res.json({message: "Request expired or email doesn't exist in the system"});
+
+      }
+    });
+
+  });
+
+});
+
 // #######################################################
 // ################### REGISTER NEW USER #################
 // #######################################################
-let verifications = [];
-let timerId = null;
-
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: 'stea.tesis.a003@gmail.com',
-    pass: 'steatesisA003'
-  }
-});
-
 function sendVerificationMail(req, res) {
 
   const code = randomstring.generate(6);
@@ -98,7 +250,6 @@ function sendVerificationMail(req, res) {
 
       // at this point the user have 30 minutes to verify the account
       logger.info("REGGISTER>> Email sent: ", info.response);
-      console.log(info.response);
 
       verifications.push({email: req.body.email, code: code});
       if (timerId == null) {
@@ -151,7 +302,7 @@ router.post('/register',(req,res) => {
 });
 
 function sendVerifyCredentials(req, res) {
-  const sql = `SELECT idUsuario, uuid FROM Usuario WHERE email=?`;
+  const sql = `SELECT * FROM Usuario WHERE email=?`;
 
   conn.query(sql, [req.body.email],(err, data)=>{
 
@@ -166,12 +317,16 @@ function sendVerifyCredentials(req, res) {
       throw err;
 
     }
-    res.status(200); // Succesfully
-    res.json({
-      message: "Usuario registrado con éxito",
-      uuid: data[0].uuid,
-      idUsuario: data[0].idUsuario
-    });  
+    if(data.length) {
+
+      res.status(200); // Succesfully
+      res.json({
+        message: "Usuario registrado con éxito",
+        uuid: data[0].uuid,
+        idUsuario: data[0].idUsuario
+      });
+
+    }
 
   });
 }
@@ -245,36 +400,6 @@ router.post('/verify', (req, res) => {
 
 });
 
-
-
-// #######################################################
-// ################## CHECK USER SESSION #################
-// #######################################################
-router.post('/checksession', (req,res) => {
-  let sql = `SELECT idUsuario, nombre, apellido, email, nacimiento, admin, foto, configuracion, idAvatar FROM Usuario WHERE uuid = ?`;
-  let values = [
-    req.body.UUID
-  ];
-  logger.info("CHECKSESSION>> UUID: ", req.body.UUID);
-  conn.query(sql, [values], (err,data, fields) => {
-    if(err) throw err;
-    logger.info("CHECKSESSION>> data recovered: ", data);
-    if(data.length) {
-      res.status(200)
-      .json({
-        message: "SessionSuccesfully",
-        userData: data[0]
-      });
-    } else {
-      logger.error("CHEKSESSION>> Invalid user or session expired");
-      res.status(401)
-      .json({
-        message: "this session has expired"
-      });
-    }
-  })
-});
-
 router.put('/newregister', (req, res) => {
 
   logger.info("NEWREGISTER>> avatar and image: ", req.body);
@@ -324,8 +449,39 @@ router.get('/avatars', (req, res) => {
       res.json({message: "Ok I could not find Avatars :("});
     }
     
+  });
+});
+
+// #######################################################
+// ################## CHECK USER SESSION #################
+// #######################################################
+router.put('/checksession', (req,res) => {
+  let sql = `SELECT idUsuario FROM Usuario WHERE uuid = ?`;
+  
+  logger.info("CHECKSESSION>> UUID: ", req.body.UUID);
+  conn.query(sql, [req.body.UUID], (err,data) => {
+    if(err) throw err;
+    
+    logger.info("CHECKSESSION>> recovered data: ", data);
+    if(data.length) {
+      
+      res.status(200);
+      res.json({
+        message: "It's OK"
+      });
+
+    } else {
+
+      logger.error("CHEKSESSION>> Invalid user or session expired");
+      res.status(401)
+      .json({
+        message: "this session has expired"
+      });
+
+    }
   })
-})
+});
+
 
 module.exports = router;
 
