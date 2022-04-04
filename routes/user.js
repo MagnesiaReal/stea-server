@@ -48,9 +48,7 @@ router.put('/login', (req, res) => {
           let userData = data[0];
           delete userData.pass;
 
-          if(userData.uuid === null) { // this mecanism works if user logout in all sessions
-            userData.uuid = uuid.v4();
-          }
+          console.log(userData);
 
           res.status(200);
           res.json({
@@ -186,12 +184,13 @@ router.post('/changepass', (req, res)=> {
   bcrypt.hash(req.body.pass, 10, (err, hash) => {
     if(err) throw err;
     
-    let sql = `UPDATE Usuario SET pass=?, uuid=NULL WHERE email=?`;
+    let sql = `UPDATE Usuario SET pass=?, uuid=? WHERE email=?`;
     
     changePassword = changePasswords.find(p => p.code === req.body.code);
 
     values = [
       hash,
+      uuid.v4(),
       changePassword.email
     ];
     
@@ -204,6 +203,7 @@ router.post('/changepass', (req, res)=> {
       
       if(data.affectedRows) {
         
+        changePasswords.slice(changePasswords.findIndex(p=> p.email === req.body.code));
         logger.info("CHANGEPASS>> Password changed");
         res.status(200);
         res.json({message: "Password changed successfully"});
