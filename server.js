@@ -3,6 +3,8 @@ bodyParser = require('body-parser');
 mysql = require('mysql');
 cors =  require('cors');
 userRouter = require('./routes/user');
+userInfoRoutes = require('./routes/userInfo');
+groups = require('./routes/groups');
 uuid = require('uuid');
 
 logger = require('simple-node-logger').createSimpleLogger('./magnecia_logs/server.log');
@@ -22,13 +24,15 @@ conn = mysql.createConnection({
 conn.connect((err) => {
   if (err) throw err;
   console.log("Connected");
-})
+});
 
 app = express();
 app.use(express.json()); // Parser data as Json
 app.use(express.urlencoded({extended: true}));
 app.use(cors());
 app.use('/routes', userRouter);
+app.use('/routes', userInfoRoutes);
+app.use('/routes', groups);
 
 //ruta estatica
 app.use(express.static('/home/magneciareal/Desktop/stea_data'));

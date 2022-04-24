@@ -25,11 +25,13 @@ const transporter = nodemailer.createTransport({
 // #######################################################
 // ####################### LOGIN USER ####################
 // #######################################################
-router.put('/login', (req, res) => {
+router.post('/login', (req, res) => {
 
   logger.info("LOGIN>> checking credentials");
 
-  let sql = `SELECT idUsuario, nombre, apellido, nacimiento, admin, foto, configuracion, idAvatar, uuid, pass FROM Usuario WHERE email=?`;
+  console.log(req.body.email, req.body.pass);
+
+  let sql = `SELECT idUsuario, nombre, apellido, nacimiento, admin, configuracion, idAvatar, uuid, pass FROM Usuario WHERE email=?`;
 
   conn.query(sql, [req.body.email], (err,data)=>{
     if(err) throw err;
@@ -333,8 +335,6 @@ function sendVerifyCredentials(req, res) {
 
 function insertNewUser(req, res) {
 
-  unicUserId = uuid.v4();
-
   let sql = `INSERT INTO Usuario(nombre,apellido,email,nacimiento,admin,pass, uuid) VALUES (?)`;
   bcrypt.hash(req.body.pass, 10,(err,hash)=>{
   
@@ -347,7 +347,7 @@ function insertNewUser(req, res) {
       req.body.born,
       0,
       hash,
-      unicUserId
+      uuid.v4()
     ]; 
     conn.query(sql, [values], (err,data) => {
       
@@ -363,10 +363,18 @@ function insertNewUser(req, res) {
         throw err;
 
       }
-      else {
+      else if(data.affectedRows) {
 
         logger.info("VERIFY>> Server send a success response");
         sendVerifyCredentials(req, res);
+
+      } else {
+        
+        logger.error("VERIFY>> I have no idea why the user was not registered");
+        res.status(500);
+        res.json({
+          message: "User doesn't registered but I don't know why"
+        });
 
       }
       
@@ -403,11 +411,10 @@ router.post('/verify', (req, res) => {
 router.put('/newregister', (req, res) => {
 
   logger.info("NEWREGISTER>> avatar and image: ", req.body);
-  let sql = `UPDATE Usuario SET idAvatar=?, configuracion=?, foto=? WHERE uuid = ?`;
+  let sql = `UPDATE Usuario SET idAvatar=?, configuracion=? WHERE uuid = ?`;
   let values = [
     req.body.idAvatar,
     req.body.configuration,
-    req.body.photo,
     req.body.UUID
   ]
 
@@ -467,7 +474,7 @@ router.put('/checksession', (req,res) => {
       
       res.status(200);
       res.json({
-        message: "It's OK"
+        message: "It's OK, the user is logged"
       });
 
     } else {
@@ -475,7 +482,7 @@ router.put('/checksession', (req,res) => {
       logger.error("CHEKSESSION>> Invalid user or session expired");
       res.status(401)
       .json({
-        message: "this session has expired"
+        message: "This session has expired and now your gonnna redirect to home"
       });
 
     }
