@@ -11,16 +11,16 @@ let timerIdAccess = null;
 
 
 
-// ######## AUTHENTICATION MECHANISM######################
+// ######## AUTHENTICATION MECHANISM ###################### MIDDLEWARE
 // the user need permissions for perform operations here #
 
 router.use((req, res, next) => {
-  console.log('CONFIGGROUPS>> middleware verify user again userId=', req.body.userId, ' groupId=', req.body.groupId);
+  console.log('CONFIGGROUPS>> middleware verify user again userId=', req.body.userId, ' UUID=', req.body.UUID);
   
-  const sql = `SELECT * FROM Usuario u JOIN UsuarioGrupo ug ON u.idUsuario=ug.idUsuario WHERE u.idUsuario=? AND ug.idGrupo=? AND ug.tipoUsuario<3`;
+  const sql = `SELECT * FROM Usuario WHERE idUsuario=? AND uuid=?`;
   const values = [
     req.body.userId,
-    req.body.groupId
+    req.body.UUID
   ];
 
   conn.query(sql, values, (err, data)=> {
@@ -31,9 +31,9 @@ router.use((req, res, next) => {
     
     if(data.length) {
       logger.info('User have priviledges to execute these operations, continue...');
-      next();
+      next();// execute the request
     } else {
-      logger.info('User have no priviledges to execute this, exit inmediate');
+      logger.info('User have no privileges to execute this, exit inmediate');
       res.status(401).json({message: 'Middleware says: you have no permissions'});
     }
 
@@ -111,7 +111,7 @@ function createNewGroup(req, res) {
 router.post('/creategroup', (req, res)=> {
   logger.info('USERGROUPS>> create new group for userId: ', req.body.userId);
 
-  const sql = `SELECT * FROM Usuario WHERE idUsuario=? AND uuid=? AND nombre<>?`;
+  const sql = `SELECT * FROM UsuarioGrupo ug JOIN Grupo g ON ug.idGrupo=g.idGrupo WHERE ug.idUsuario=? AND g.nombre like ?`;
 
   conn.query(sql, [req.body.userId, req.body.UUID, req.body.groupName], (err, data) => {
     if(err) {
@@ -122,10 +122,10 @@ router.post('/creategroup', (req, res)=> {
     }
 
     if(data.length) {
-      createNewGroup(req,res);
-    } else {
       res.status(401); // Forbidden
       res.json({message: "You have no permissions for create a group or this group already Exist!!!"});
+    } else {
+      createNewGroup(req,res);
     }
 
   });
@@ -162,63 +162,36 @@ function createGroupToken(req, res) {
   accessCodes.push({code: code, groupId: req.body.groupId});
   
   if (timerIdAccess == null) {
-
     timerIdAccess = setInterval(()=>{
-
       if(accessCodes.length) accessCodes.shift();
       else {
-
         clearInterval(timerIdAccess);
         timerIdAccess = null;
-
       }
-
     },259200000); // 3 dias  
-
   }
 
   logger.info("Access Token created successfully");
   res.status(200);
   res.json({message: "Access Token generated take this", code: code});
-
 }
 
-function verifyGroupOwner(req, res) {
+
+router.post('/createtokengroup', (req, res) => {
+  logger.info('Creating a token for this group');
+  
   const sql = `SELECT tipoUsuario FROM UsuarioGrupo WHERE idUsuario=? AND idGrupo=?`;
 
   conn.query(sql, [req.body.userId, req.body.groupId], (err, data)=> {
     if(err) throw err;
 
-    if(data.length && data[0].tipoUsuario === 1) { // es el owner xd
+    if(data.length && data[0].tipoUsuario < 3) { // es el owner xd
       createGroupToken(req, res);
     } else {
       res.status(401);
-      res.json({message: 'You aren\'t the owner >:('});
+      res.json({message: 'You need to be a owner or admin to generate the token >:('});
     }
   });
-}
-
-router.post('/createtokengroup', (req, res) => {
-  logger.info('Creating a token for this group');
-  
-  const sql = `SELECT * FROM Usuario WHERE idUsuario=? AND uuid=?`;
-  
-  conn.query(sql, [req.body.userId, req.body.UUID], (err, data) => {
-    
-    if(err) {
-      logger.error('USERGROUPS>> Internal server error, plese fix it');
-      res.status(500);
-      res.json({message: "Error trying to access to a group : INTERNAL SERVER ERROR"});
-      throw err;
-    }
-
-    if(data.length) {
-      verifyGroupOwner(req, res);
-    } else {
-      res.status(401);
-      res.json({message: "You have no permissions to perform this operation"});
-    }
-  })
 
 });
 
@@ -245,7 +218,7 @@ function insertUserGroup(req, res, accessCredentials) {
     }
 
     if(data.affectedRows) {
-      sql = `UPDATE Grupo SET participantes=(SELECT count(*) FROM UsuarioGrupo WHERE idGrupo=? AND tipoUsuario<3) WHERE idGrupo=?`;
+      sql = `UPDATE Grupo SET participantes=(SELECT count(*) FROM UsuarioGrupo WHERE idGrupo=?) WHERE idGrupo=?`;
       values = [
         req.body.groupId,
         req.body.groupId
@@ -275,7 +248,9 @@ function insertUserGroup(req, res, accessCredentials) {
   });
 }
 
-function groupAccess(req, res) {  
+router.post('/accessgroup', (req, res) => {
+  logger.info('USERGROUPS>> trying to group access by token');
+
   const accessCredentials = accessCodes.find(ac => ac.code === req.body.code);
   if(accessCredentials) {
     const sql = `SELECT * FROM UsuarioGrupo WHERE idUsuario=? AND idGrupo=?`;
@@ -293,39 +268,18 @@ function groupAccess(req, res) {
     res.status(401);
     res.json({message: 'The code doesn\'t exist'});
   }
-}
-
-router.post('/accessgroup', (req, res) => {
-  logger.info('USERGROUPS>> trying to group access by token');
-  
-  const sql = `SELECT * FROM Usuario WHERE idUsuario=? AND uuid=?`;
-  
-  conn.query(sql, [req.body.userId, req.body.UUID], (err, data) => {
-    
-    if(err) {
-      logger.error('USERGROUPS>> Internal server error, plese fix it');
-      res.status(500);
-      res.json({message: "Error trying to access to a group : INTERNAL SERVER ERROR"});
-      throw err;
-    }
-
-    if(data.length) {
-      groupAccess(req, res);
-    } else {
-      res.status(401);
-      res.json({message: "You have no permissions to perform this operation"});
-    }
-  })
-
 });
 
 
-// STILL EDITING
+// #######################################################
+// ###################### GET USER GROUPS ################
+// #######################################################
+
 router.post('/usergroups', (req,res)=> {
 
   logger.info('USERGROUPS>> getting groups for userId:', req.body.userId);
   
-  let sql = `SELECT * FROM UsuarioGrupo ug JOIN Grupo g ON ug.idGrupo=g.idGrupo WHERE idUsuario=?`;
+  let sql = `SELECT * FROM UsuarioGrupo ug JOIN Grupo g ON ug.idGrupo=g.idGrupo WHERE ug.idUsuario=?`;
 
   conn.query(sql, [req.body.userId], (err, data) => {
 
@@ -346,11 +300,8 @@ router.post('/usergroups', (req,res)=> {
         userGroups: data
       });
 
-    } else {
-      
-      res.status(204); // No content
-      res.json({});
-
+    } else {      
+      res.status(204).send(); // No content
     }
 
   });
