@@ -1,5 +1,5 @@
 const express = require('express');
-router = express.Router();
+const router = express.Router();
 
 
 router.post('/userinfo', (req, res)=> {

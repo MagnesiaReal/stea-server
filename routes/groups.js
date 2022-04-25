@@ -1,5 +1,5 @@
 const express = require('express');
-router = express.Router();
+const router = express.Router();
 randomstring = require('randomstring');
 
 
@@ -10,6 +10,35 @@ let accessCodes = [];
 let timerIdAccess = null;
 
 
+
+// ######## AUTHENTICATION MECHANISM######################
+// the user need permissions for perform operations here #
+
+router.use((req, res, next) => {
+  console.log('CONFIGGROUPS>> middleware verify user again userId=', req.body.userId, ' groupId=', req.body.groupId);
+  
+  const sql = `SELECT * FROM Usuario u JOIN UsuarioGrupo ug ON u.idUsuario=ug.idUsuario WHERE u.idUsuario=? AND ug.idGrupo=? AND ug.tipoUsuario<3`;
+  const values = [
+    req.body.userId,
+    req.body.groupId
+  ];
+
+  conn.query(sql, values, (err, data)=> {
+    if(err) {
+      logger.error('USERGROUPS>> Error in middleware!!!');
+      throw err;
+    }
+    
+    if(data.length) {
+      logger.info('User have priviledges to execute these operations, continue...');
+      next();
+    } else {
+      logger.info('User have no priviledges to execute this, exit inmediate');
+      res.status(401).json({message: 'Middleware says: you have no permissions'});
+    }
+
+  });
+});
 // #######################################################
 // ##################### CREATE GROUP ####################
 // #######################################################
@@ -116,9 +145,9 @@ router.delete('/deletegroup', (req, res) => {
     req.body.groupId
   ];
 
-  conn.query(sql, values, (err, data)=> {
+  //conn.query(sql, values, (err, data)=> {
 
-  });
+  //});
 
 });
 
@@ -289,10 +318,6 @@ router.post('/accessgroup', (req, res) => {
   })
 
 });
-
-
-
-
 
 
 // STILL EDITING

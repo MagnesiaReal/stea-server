@@ -2,12 +2,14 @@ express = require('express');
 bodyParser = require('body-parser');
 mysql = require('mysql');
 cors =  require('cors');
+uuid = require('uuid');
+logger = require('simple-node-logger').createSimpleLogger('./magnecia_logs/server.log');
+
 userRouter = require('./routes/user');
 userInfoRoutes = require('./routes/userInfo');
 groups = require('./routes/groups');
-uuid = require('uuid');
+configGroups = require('./routes/configGroups');
 
-logger = require('simple-node-logger').createSimpleLogger('./magnecia_logs/server.log');
 
 logger.info("Trying to start server");
 
@@ -30,9 +32,11 @@ app = express();
 app.use(express.json()); // Parser data as Json
 app.use(express.urlencoded({extended: true}));
 app.use(cors());
+
 app.use('/routes', userRouter);
 app.use('/routes', userInfoRoutes);
 app.use('/routes', groups);
+app.use('/routes/', configGroups);
 
 //ruta estatica
 app.use(express.static('/home/magneciareal/Desktop/stea_data'));
