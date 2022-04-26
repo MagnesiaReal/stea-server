@@ -15,7 +15,7 @@ let timerIdAccess = null;
 // the user need permissions for perform operations here #
 
 router.use((req, res, next) => {
-  console.log('CONFIGGROUPS>> middleware verify user again userId=', req.body.userId, ' UUID=', req.body.UUID);
+  console.log('GROUPS>> middleware verify user again userId=', req.body.userId, ' UUID=', req.body.UUID);
   
   const sql = `SELECT * FROM Usuario WHERE idUsuario=? AND uuid=?`;
   const values = [
