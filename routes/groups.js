@@ -15,7 +15,7 @@ let timerIdAccess = null;
 // the user need permissions for perform operations here #
 
 router.use((req, res, next) => {
-  console.log('GROUPS>> middleware verify user again userId=', req.body.userId, ' UUID=', req.body.UUID);
+  logger.info('GROUPSMIDDLEWARE>> verify user again userId=', req.body.userId, ' UUID=', req.body.UUID);
   
   const sql = `SELECT * FROM Usuario WHERE idUsuario=? AND uuid=?`;
   const values = [
@@ -25,12 +25,12 @@ router.use((req, res, next) => {
 
   conn.query(sql, values, (err, data)=> {
     if(err) {
-      logger.error('USERGROUPS>> Error in middleware!!!');
+      logger.error('GROUPSMIDDLEWARE>> Error in middleware!!!');
       throw err;
     }
     
     if(data.length) {
-      logger.info('User have priviledges to execute these operations, continue...');
+      logger.info('GROPSMIDDLEWARE>> User have priviledges to execute these operations, continue...');
       next();// execute the request
     } else {
       logger.info('User have no privileges to execute this, exit inmediate');
@@ -185,8 +185,14 @@ router.post('/createtokengroup', (req, res) => {
   conn.query(sql, [req.body.userId, req.body.groupId], (err, data)=> {
     if(err) throw err;
 
-    if(data.length && data[0].tipoUsuario < 3) { // es el owner xd
-      createGroupToken(req, res);
+    if(data.length && data[0].tipoUsuario < 3) { // es el owner o el admin
+      
+      logger.info('GROUPS>> verify if access token exist or expires');
+      const accessCode = accessCodes.find(ac => ac.groupId === req.body.groupId);
+      
+      if(accessCode) res.status(200).json({message: 'The access token already exist, take that', code: accessCode.code});
+      else createGroupToken(req, res);
+
     } else {
       res.status(401);
       res.json({message: 'You need to be a owner or admin to generate the token >:('});
@@ -279,7 +285,8 @@ router.post('/usergroups', (req,res)=> {
 
   logger.info('USERGROUPS>> getting groups for userId:', req.body.userId);
   
-  let sql = `SELECT * FROM UsuarioGrupo ug JOIN Grupo g ON ug.idGrupo=g.idGrupo WHERE ug.idUsuario=?`;
+  // let sql = `SELECT * FROM UsuarioGrupo ug JOIN Grupo g ON ug.idGrupo=g.idGrupo WHERE ug.idUsuario=?`;
+  let sql = `SELECT pg.idGrupo, pg.nombreGrupo, pg.grupo, pg.idUsuario, pg.nombreUsuario, ug.tipoUsuario FROM PropietarioGrupo pg JOIN UsuarioGrupo ug ON pg.idGrupo=ug.idGrupo AND ug.idUsuario=?`;
 
   conn.query(sql, [req.body.userId], (err, data) => {
 
@@ -306,6 +313,6 @@ router.post('/usergroups', (req,res)=> {
 
   });
 
-})
+});
 
 module.exports = router;

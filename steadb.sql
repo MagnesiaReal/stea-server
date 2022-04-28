@@ -21,3 +21,7 @@ CREATE TABLE UsuarioActividad(idUsuarioActividad INT PRIMARY KEY NOT NULL AUTO_I
 CREATE TABLE UsuarioGrupoActividad(idUsuarioGrupoActividad INT PRIMARY KEY NOT NULL AUTO_INCREMENT, idUsuarioGrupo INT, idActividad INT, calificacion INT NOT NULL, resultados JSON, CONSTRAINT FK_UsuarioGrupoActividad_Actividad FOREIGN KEY(idActividad) REFERENCES Actividad(idActividad), CONSTRAINT FK_UsuarioGrupoActividad_UsuarioGrupo FOREIGN KEY(idUsuarioGrupo) REFERENCES UsuarioGrupo(idUsuarioGrupo));
 
 CREATE TABLE GrupoActividad(idGrupoActividad INT PRIMARY KEY NOT NULL AUTO_INCREMENT, idGrupo INT, idActividad INT, estadisticos JSON, CONSTRAINT FK_GrupoActividad_Actividad FOREIGN KEY(idActividad) REFERENCES Actividad(idActividad), CONSTRAINT FK_GrupoActividad_Grupo FOREIGN KEY(idGrupo) REFERENCES Grupo(idGrupo), fechaInicio DATE);
+
+-- View for owner groups
+CREATE VIEW PropietarioGrupo AS SELECT g.idGrupo, g.nombre as nombreGrupo, g.grupo, ug.idUsuario, concat(u.nombre, ' ',u.apellido) as nombreUsuario FROM UsuarioGrupo ug, Grupo g, Usuario u WHERE ug.idGrup
+o=g.idGrupo AND u.idUsuario=ug.idUsuario AND ug.tipoUsuario=1;
