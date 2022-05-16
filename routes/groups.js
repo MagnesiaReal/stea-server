@@ -15,13 +15,21 @@ let timerIdAccess = null;
 // the user need permissions for perform operations here #
 
 router.use((req, res, next) => {
-  logger.info('GROUPSMIDDLEWARE>> verify user again userId=', req.body.userId, ' UUID=', req.body.UUID);
+
+  logger.info('GROUPSMIDDLEWARE>> verify user again');
   
   const sql = `SELECT * FROM Usuario WHERE idUsuario=? AND uuid=?`;
-  const values = [
+  let values = [];
+  if(req.query.userId) values = [
+    req.query.userId,
+    req.query.UUID
+  ];
+  else values = [
     req.body.userId,
     req.body.UUID
   ];
+  
+  console.log(values)
 
   conn.query(sql, values, (err, data)=> {
     if(err) {
@@ -30,7 +38,7 @@ router.use((req, res, next) => {
     }
     
     if(data.length) {
-      logger.info('GROPSMIDDLEWARE>> User have priviledges to execute these operations, continue...');
+      logger.info('GROPSMIDDLEWARE>> User have privileges to execute these operations, continue...');
       next();// execute the request
     } else {
       logger.info('User have no privileges to execute this, exit inmediate');
@@ -108,12 +116,12 @@ function createNewGroup(req, res) {
   
 }
 
-router.post('/creategroup', (req, res)=> {
+router.post('/create', (req, res)=> {
   logger.info('USERGROUPS>> create new group for userId: ', req.body.userId);
+  // fist check if the group name already exist, there cannot be two groups with the same name
+  const sql = `SELECT * FROM UsuarioGrupo ug JOIN Grupo g ON ug.idGrupo=g.idGrupo WHERE ug.idUsuario=? AND g.nombre like ? AND g.grupo like ?`;
 
-  const sql = `SELECT * FROM UsuarioGrupo ug JOIN Grupo g ON ug.idGrupo=g.idGrupo WHERE ug.idUsuario=? AND g.nombre like ?`;
-
-  conn.query(sql, [req.body.userId, req.body.UUID, req.body.groupName], (err, data) => {
+  conn.query(sql, [req.body.userId, req.body.groupName, req.body.group], (err, data) => {
     if(err) {
       logger.error('USERGROUPS>> Internal server error at verify user create group, please fix it');
       res.status(500);
@@ -123,7 +131,7 @@ router.post('/creategroup', (req, res)=> {
 
     if(data.length) {
       res.status(401); // Forbidden
-      res.json({message: "You have no permissions for create a group or this group already Exist!!!"});
+      res.json({message: "This group already Exist!!!"});
     } else {
       createNewGroup(req,res);
     }
@@ -135,19 +143,62 @@ router.post('/creategroup', (req, res)=> {
 // ##################### DELETE GROUP ####################
 // #######################################################
 
-router.delete('/deletegroup', (req, res) => {
+function deleteAllData(req, res) {
+  conn.beginTransaction();
+  const sql = `DELETE FROM GrupoActividad WHERE idGrupo=?; DELETE FROM GrupoActividadResultados WHERE idGrupoActividad IN (SELECT ga.idGrupoActividad FROM GrupoActividad ga WHERE ga.idGrupo=?); DELETE FROM UsuarioGrupo WHERE idGrupo=?; DELETE FROM Grupo WHERE idGrupo=?`;
 
-  const sql =`SELECT * FROM Usuario u JOIN UsuarioGrupo ug ON u.idUsuario=ug.idUsuario WHERE u.idUsuario=? AND u.uuid=? AND ug.idGrupo=? AND ug.tipoUsuario=1`;
-  
-  const values = [
-    req.body.userId,
-    req.body.UUID,
+  const chain = [
+    req.body.groupId,
+    req.body.groupId,
+    req.body.groupId,
     req.body.groupId
   ];
 
-  //conn.query(sql, values, (err, data)=> {
+  conn.query(sql, chain, (err, data) => {
+    if(err) {
+      logger.error('USERGROUPS>> Internal server error, plese fix it');
+      res.status(500);
+      res.json({message: "Error trying to deleting this group : INTERNAL SERVER ERROR"});
+      conn.rollback();
+      throw err;
+    }
+    conn.commit();
+    if(data[3].affectedRows) {
+      res.status(200).json({message: 'Group deleted successfully'});
+    } else {
+      res.status(409).json({message: 'Something is wrong, group still exist'});
+    }
 
-  //});
+  });
+  
+
+
+}
+
+router.delete('/delete', (req, res) => {
+
+  logger.info('DELETEGROUP>> deleting a group');
+
+  const sql = `SELECT * FROM UsuarioGrupo WHERE idGrupo=? AND idUsuario=? AND tipoUsuario=?`;
+  
+  const values = [
+    req.body.groupId,
+    req.body.userId,
+    1
+  ];
+
+  conn.query(sql, values, (err, data) => {
+    if(err) {
+      throw err;
+    }
+
+    if (data.length) { // user is the owner
+      deleteAllData(req, res);
+    } else {
+      res.status(401).json({message: 'Forbbiden operation!!! you might not be the owner'});
+    }
+
+  });
 
 });
 
@@ -177,7 +228,7 @@ function createGroupToken(req, res) {
 }
 
 
-router.post('/createtokengroup', (req, res) => {
+router.post('/createtoken', (req, res) => {
   logger.info('Creating a token for this group');
   
   const sql = `SELECT tipoUsuario FROM UsuarioGrupo WHERE idUsuario=? AND idGrupo=?`;
@@ -254,8 +305,8 @@ function insertUserGroup(req, res, accessCredentials) {
   });
 }
 
-router.post('/accessgroup', (req, res) => {
-  logger.info('USERGROUPS>> trying to group access by token');
+router.post('/access', (req, res) => {
+  logger.info(`USERGROUPS>> trying to grant access to user(${req.body.userId}) via token`);
 
   const accessCredentials = accessCodes.find(ac => ac.code === req.body.code);
   if(accessCredentials) {
@@ -281,14 +332,14 @@ router.post('/accessgroup', (req, res) => {
 // ###################### GET USER GROUPS ################
 // #######################################################
 
-router.post('/usergroups', (req,res)=> {
+router.get('/allforuser', (req,res)=> {
 
   logger.info('USERGROUPS>> getting groups for userId:', req.body.userId);
   
   // let sql = `SELECT * FROM UsuarioGrupo ug JOIN Grupo g ON ug.idGrupo=g.idGrupo WHERE ug.idUsuario=?`;
   let sql = `SELECT pg.idGrupo, pg.nombreGrupo, pg.grupo, pg.idUsuario, pg.nombreUsuario, ug.tipoUsuario FROM PropietarioGrupo pg JOIN UsuarioGrupo ug ON pg.idGrupo=ug.idGrupo AND ug.idUsuario=?`;
 
-  conn.query(sql, [req.body.userId], (err, data) => {
+  conn.query(sql, [req.query.userId], (err, data) => {
 
     if(err) {
 
@@ -315,4 +366,85 @@ router.post('/usergroups', (req,res)=> {
 
 });
 
+// #######################################################
+// ###################### GET GROUP DATA #################
+// #######################################################
+
+function getGroup(req, res) {
+  logger.info(`Getting group(${req.query.groupId}) info`);
+
+  const sql = `SELECT * FROM Grupo WHERE idGrupo=?`;
+
+  conn.query(sql, [req.query.groupId], (err, data)=> {
+    if(err) {
+      logger.error('USERGROUPS>> Internal server error, plese fix it');
+      res.status(500);
+      res.json({message: "Error trying to get groupinfo : INTERNAL SERVER ERROR"});
+      throw err; 
+    }
+
+    if(data.length) {
+      res.status(200).json({message: 'this is the group data', groupData: data[0]});
+    } else {
+      res.status(404).json({message: 'this group doesn\'t exist'});
+    }
+
+  });
+}
+
+
+router.get('/group', (req, res)=> {
+  
+  logger.info(`GROUPS>> Verify if user is in this group(${req.query.groupId})`);
+  const sql = `SELECT * FROM UsuarioGrupo WHERE idUsuario=? AND idGrupo=?`;
+
+  conn.query(sql, [req.query.userId, req.query.groupId], (err, data)=> {
+    if(err) {
+      logger.error('USERACTIVITIES>> Internal server error, plese fix it');
+      res.status(500);
+      res.json({message: "Error getting group info : INTERNAL SERVER ERROR"});
+      console.log(err.stack); return;
+    }
+
+    if(data.length) {
+      getGroup(req, res);
+    } else {
+      res.status(401).json({message: 'This user have no permissions to get groupData'});
+    }
+  })
+
+
+});
+
 module.exports = router;
+
+
+// #######################################################
+// ################### EXIT FROM A GROUP #################
+// #######################################################
+
+
+router.delete('/exit', (req, res)=> {
+  logger.info(`GROUPS>> Exit from this group(${req.body.groupId})`);
+
+  const sql = `DELETE FROM UsuarioGrupo WHERE idUsuario=? AND idGrupo=? AND tipoUsuario<>1`;
+  const values = [
+    req.body.userId,
+    req.body.groupId
+  ];
+
+  conn.query(sql, values, (err, data)=> {
+    if(err) {
+      logger.error('USERACTIVITIES>> Internal server error, plese fix it');
+      res.status(500);
+      res.json({message: "Error error removing the user from this group : INTERNAL SERVER ERROR"});
+      console.log(err.stack); return;
+    }
+
+    if(data.affectedRows) {
+      res.status(200).json({message: 'Exit from this group successfully'});
+    } else {
+      res.status(409).json({message: 'Hmmm maybe this user does not exist in this group or is the owner'});
+    }
+  })
+});

@@ -7,47 +7,53 @@ const router = express.Router();
 // #######################################################
 
 
-
-
-
-
-
-
 // ### MECHANISM ###
 // the user who perform operations in configGroups need at least to be a admin or owner 2 1
 // so this mechanism verify if the user have this permissions before 
 
 router.use((req, res, next) => {
-  console.log('CONFIGGROUPS>> middleware verify user again userId=', req.body.userId, ' groupId=', req.body.groupId);
   
   const sql = `SELECT * FROM Usuario u JOIN UsuarioGrupo ug ON u.idUsuario=ug.idUsuario WHERE u.idUsuario=? AND ug.idGrupo=? AND ug.tipoUsuario<3`;
-  const values = [
-    req.body.userId,
-    req.body.groupId
-  ];
+  let values = [];
+  if(req.query.userId) {
+    logger.info('CONFIGGROUPS>> middleware verify user again GET userId=', req.query.userId, ' groupId=', req.query.groupId);
+    values = [
+      req.query.userId,
+      req.query.groupId
+    ];
+  }
+  else {
+    logger.info('CONFIGGROUPS>> middleware verify user again POST userId=', req.body.userId, ' groupId=', req.body.groupId);
+    values = [
+      req.body.userId,
+      req.body.groupId
+    ];
+  }
 
   conn.query(sql, values, (err, data)=> {
     if(err) {
-      logger.error('USERGROUPS>> Error in middleware!!!');
-      throw err;
+      logger.error('CONFIGGROUPS>> Error in middleware!!!');
+      console.log(err.stack); return;
     }
     
     if(data.length) {
-      logger.info('User have priviledges to execute these operations, continue...');
+      logger.info('CONFIGGROUPS>> User have priviledges to execute these operations, continue...');
       next();
     } else {
-      logger.info('User have no priviledges to execute this, exit inmediate');
+      logger.info('CONFIGGROUPS>> User have no privileges to execute this, exit inmediate');
       res.status(401).json({message: 'Middleware says: you have no permissions'});
     }
-
   });
 });
 
 router.use((req, res, next) => {
   console.log('CONFIGGROUPS>> middleware verify if group exist');
   const sql = `SELECT * FROM Grupo WHERE idGrupo=?`;
-  conn.query(sql, [req.body.groupId], (err, data)=> {
-    if(err) throw err;
+  const value = (req.query.groupId) ? req.query.groupId : req.body.groupId;
+  conn.query(sql, [value], (err, data)=> {
+    if(err){
+      console.log(err.stack); return;
+    }
 
     if(data.length) {
       logger.info('This Group exist, ok continue with your operations...');
@@ -60,19 +66,77 @@ router.use((req, res, next) => {
 });
 
 // #######################################################
+// ##################### UPDATE GROUP ####################
+// #######################################################
+
+function updateGroup(req, res) {
+  const sql = `UPDATE Grupo SET info=?, grupo=?, nombre=? WHERE idGrupo=?`;
+  const values = [
+    req.body.info,
+    req.body.group,
+    req.body.groupName,
+    req.body.groupId
+  ];
+
+  conn.query(sql, values, (err, data)=> {
+    if(err) {
+      logger.error('USERACTIVITIES>> Internal server error, plese fix it');
+      res.status(500);
+      res.json({message: "Error updating a group : INTERNAL SERVER ERROR"});
+      console.log(err.stack); return;
+    }
+    if(data.affectedRows) {
+      res.status(200).json({message: 'The group has been updated'});
+    } else {
+      res.status(409).json({message: 'Somethings wrong updating this group'});
+    }
+  });
+}
+
+router.put('/update', (req, res)=> {
+  logger.info(`GROUPS>> Updating group(${req.body.groupId})`);
+
+  const sql = `SELECT * FROM UsuarioGrupo ug JOIN Grupo g ON ug.idGrupo=g.idGrupo WHERE ug.idUsuario=? AND g.nombre like ? AND g.grupo like ? AND g.idGrupo<>?`;
+
+  conn.query(sql, [req.body.userId, req.body.groupName, req.body.group, req.body.groupId], (err, data) => {
+    if(err) {
+      logger.error('USERGROUPS>> Internal server error at verify user create group, please fix it');
+      res.status(500);
+      res.json({message: "Error updating a group for user : INTERNAL SERVER ERROR"});
+      console.log(err.stack); return;
+    }
+
+    if(data.length) {
+      res.status(401); // Forbidden
+      res.json({message: "This group already Exist!!!"});
+    } else {
+      updateGroup(req,res);
+    }
+
+  });
+
+});
+
+
+// #######################################################
 // ###################### ADD USER #######################
 // #######################################################
 
 const addUser = (req, res, idUsuarioAdd) => {
   const sql = `INSERT INTO UsuarioGrupo(idUsuario, idGrupo, tipoUsuario) VALUES(?)`;
   const values = [
-    idUsuario,
+    idUsuarioAdd,
     req.body.groupId,
     3
   ];
 
   conn.query(sql, [values], (err, data)=> {
-    if(err) throw err;
+    if(err){
+      logger.error('USERGROUPS>> Internal server error, plese fix it');
+      res.status(500);
+      res.json({message: "Error trying add user to group : INTERNAL SERVER ERROR"});
+      console.log(err.stack); return;
+    }
 
     if(data.affectedRows) {
       res.status(200);
@@ -84,50 +148,55 @@ const addUser = (req, res, idUsuarioAdd) => {
   });
 }
 
-router.post('/addusertogroup', (req, res)=> {
+router.post('/adduser', (req, res)=> {
   
-  const sql = `SELECT * FROM Usuario u LEFT OUTER JOIN UsuarioGrupo ug ON u.idUsuario=ug.idUsuario WHERE u.email like ? AND ug.idGrupo<>?`;
+  const sql = `SELECT * FROM Usuario u LEFT OUTER JOIN UsuarioGrupo ug ON u.idUsuario=ug.idUsuario WHERE u.email like ? AND ug.idGrupo=?; SELECT * FROM Usuario WHERE email like ?;`;
   const values = [
     req.body.email,
-    req.body.groupId
+    req.body.groupId,
+    req.body.email
   ];
 
   conn.query(sql, values, (err, data)=> {
 
-    if(err) throw err;
-
-    if(data.length) {
-      addUser(req, res, data[0].idUsuario);
+    if(err) {
+      logger.error('USERGROUPS>> Internal server error, plese fix it');
+      res.status(500);
+      res.json({message: "Error trying adding user to group at initial step : INTERNAL SERVER ERROR"});
+      console.log(err.stack); return;
+    }
+    
+    if(data[0].length) {
+      res.status(409).json({message: 'User already exist on this group or user doesn\'t exist'});
     } else {
-      res.json(409); //resource already exist
-      res.json({message: 'User already exist or user doesn\'t exist'});
+      addUser(req, res, data[1][0].idUsuario);
     }
   });
 
 });
 
 // #######################################################
-// ###################### DELETE USER ####################
+// ###################### REMOVE USER ####################
 // #######################################################
 
 
-router.delete('/deleteusertogroup', (req, res)=> {
+router.delete('/removeuser', (req, res)=> {
   const sql = `DELETE FROM UsuarioGrupo WHERE idUsuario=?`;
     
-  conn.query(sql, [req.body.userIdDel], (err, data)=> {
+  conn.query(sql, [req.body.targetUserId], (err, data)=> {
     if(err) {
       logger.error('Error on Delete user');
-      throw err;
+      console.log(err.stack); return;
     }
 
     if(data.affectedRows) {
       
-      res.status(200);
+      res.status(201);
       res.json({message: 'User delted successfully'});
     } else {
       
       res.status(409);
-      res.json({message: 'Nothing Change :('});
+      res.json({message: 'Nothing Change :( maybe user does not exist in this group'});
 
     }
 
@@ -136,21 +205,21 @@ router.delete('/deleteusertogroup', (req, res)=> {
 });
 
 // #######################################################
-// ####### GRANT OR REVOQUE PRIVILEGES USER ##############
+// ####### GRANT OR REVOQUE USER PRIVILEGES ##############
 // #######################################################
 
-router.put('/privilegesusertogroup', (req, res)=> {
+router.put('/privileges', (req, res)=> {
   const sql = `UPDATE UsuarioGrupo SET tipoUsuario=? WHERE idUsuario=? and idGrupo=?`;
   const values = [
     req.body.userType,
-    req.body.userIdMod,
+    req.body.targetUserId,
     req.body.groupId
   ];
 
   conn.query(sql, values, (err, data)=> {
     if(err){
       logger.error('Error at set privileges');
-      throw err;
+      console.log(err.stack); return;
     }
     
     if(data.affectedRows) {
@@ -169,15 +238,15 @@ router.put('/privilegesusertogroup', (req, res)=> {
 // ########### GET ALL USERS FOR THIS GROUP ##############
 // #######################################################
   
-router.post('/allusersofgroup', (req, res)=> {
+router.get('/allusers', (req, res)=> {
 
   logger.info('Getting all users of this group');
 
   const sql = `SELECT u.idUsuario, u.nombre, u.apellido, u.email, ug.tipoUsuario FROM Usuario u JOIN UsuarioGrupo ug ON u.idUsuario=ug.idUsuario WHERE ug.idGrupo=? AND u.idUsuario<>?`;
-  conn.query(sql, [req.body.groupId, req.body.userId], (err, data)=> {
+  conn.query(sql, [req.query.groupId, req.query.userId], (err, data)=> {
     if(err) {
       logger.error('CONFIGGROUPS>> Error at get all users');
-      throw err;
+      console.log(err.stack); return;
     }
 
     if(data.length) {
@@ -190,6 +259,5 @@ router.post('/allusersofgroup', (req, res)=> {
   });
 
 });
-
 
 module.exports = router;

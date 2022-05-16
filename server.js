@@ -9,6 +9,7 @@ userRouter = require('./routes/user');
 userInfoRoutes = require('./routes/userInfo');
 groups = require('./routes/groups');
 configGroups = require('./routes/configGroups');
+userActivities = require('./routes/activities');
 
 
 logger.info("Trying to start server");
@@ -33,13 +34,16 @@ app.use(express.json()); // Parser data as Json
 app.use(express.urlencoded({extended: true}));
 app.use(cors());
 
-app.use('/routes', userRouter);
-app.use('/routes', userInfoRoutes);
-app.use('/routes', groups);
-app.use('/routes/', configGroups);
-
 //ruta estatica
 app.use(express.static('/home/magneciareal/Desktop/stea_data'));
+
+app.use('/user', userRouter);
+app.use('/userinfo', userInfoRoutes);
+app.use('/group', groups);
+app.use('/groupconf', configGroups);
+app.use('/activity', userActivities);
+
+
 
 app.get('/', (req, res) => {
   res.json({mensaje : "Bienvenido al servidor Franchesco Virgoliniiiiiii!!!!!!!!! FIIIUUUM"});

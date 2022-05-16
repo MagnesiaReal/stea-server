@@ -28,5 +28,8 @@
     "randomstring": "^1.2.2",
     "simple-node-logger": "^21.8.12",
     "uuid": "^8.3.2"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.16"
   }
 }
