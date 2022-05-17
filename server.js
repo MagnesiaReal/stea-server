@@ -19,7 +19,8 @@ const port = 80;
 conn = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "1204",
+  port: 3307,
+  password: "root",
   database: "SteaDB",
   multipleStatements: true
 });
@@ -35,7 +36,7 @@ app.use(express.urlencoded({extended: true}));
 app.use(cors());
 
 //ruta estatica
-app.use(express.static('/home/magneciareal/Desktop/stea_data'));
+app.use(express.static('C:/Users/XMX5929/Desktop/stea_data'));
 
 app.use('/user', userRouter);
 app.use('/userinfo', userInfoRoutes);

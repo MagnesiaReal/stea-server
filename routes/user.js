@@ -27,9 +27,7 @@ const transporter = nodemailer.createTransport({
 // #######################################################
 router.post('/login', (req, res) => {
 
-  logger.info("LOGIN>> checking credentials");
-
-  console.log(req.body.email, req.body.pass);
+  logger.info(`LOGIN>> checking credentials (${req.body.email})(${req.body.pass})`);
 
   let sql = `SELECT idUsuario, nombre, apellido, nacimiento, admin, configuracion, idAvatar, uuid, pass FROM Usuario WHERE email=?`;
 
@@ -452,8 +450,7 @@ router.get('/avatars', (req, res) => {
         avatars: data
       });
     } else {
-      res.status(401);
-      res.json({message: "Ok I could not find Avatars :("});
+      res.status(204).send();
     }
     
   });

@@ -1,4 +1,4 @@
-INSERT INTO Avatar VALUES(1, 'corredor', 'http://localhost/avatars/corredor.png', 'El tiempo y tú son uno mismo, ser el primero en responder al menos 5 preguntas seguidas de manera correcta te darán un multiplicador de puntaje.');
-INSERT INTO Avatar VALUES(2, 'profesora', 'http://localhost/avatars/profesora.png', 'Tu desempeño se ve en la enseñanza, por cada primer lugar que acumules obtendrás experiencia adicional.');
+INSERT INTO Avatar VALUES(1, 'corredor', 'http://localhost/avatars/corredor.png', 'El tiempo y tu son uno mismo, ser el primero en responder al menos 5 preguntas seguidas de manera correcta te daran un multiplicador de puntaje.');
+INSERT INTO Avatar VALUES(2, 'profesora', 'http://localhost/avatars/profesora.png', 'Tu desempeno se ve en la ensenanza, por cada primer lugar que acumules obtendras experiencia adicional.');
 INSERT INTO Avatar VALUES(3, 'cirujana', 'http://localhost/avatars/cirujana.png', 'El conocimiento es tu mayor aliado, ganas puntos extra por cada pregunta correcta consecutiva que acumules.');
-INSERT INTO Avatar VALUES(4, 'ingeniero', 'http://localhost/avatars/ingeniero.png', 'Los números son tu pasión, ganas 1 segundo extra en la siguiente pregunta cada vez que acumules 3 preguntas correctas de manera consecutiva.');
+INSERT INTO Avatar VALUES(4, 'ingeniero', 'http://localhost/avatars/ingeniero.png', 'Los numeros son tu pasion, ganas 1 segundo extra en la siguiente pregunta cada vez que acumules 3 preguntas correctas de manera consecutiva.');

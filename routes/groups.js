@@ -258,7 +258,7 @@ router.post('/createtoken', (req, res) => {
 // #######################################################
 
 function insertUserGroup(req, res, accessCredentials) {
-  let sql = `INSERT INTO UsuarioGrupo(idUsuario, idGrupo, tipoUsuario) VALUES (?)`;
+  let sql = `INSERT INTO UsuarioGrupo(idUsuario, idGrupo, tipoUsuario) VALUES (?); SELECT LAST_INSERT_ID() as idGrupo;`;
   let values = [
     req.body.userId,
     accessCredentials.groupId,
@@ -274,31 +274,11 @@ function insertUserGroup(req, res, accessCredentials) {
       throw err;
     }
 
-    if(data.affectedRows) {
-      sql = `UPDATE Grupo SET participantes=(SELECT count(*) FROM UsuarioGrupo WHERE idGrupo=?) WHERE idGrupo=?`;
-      values = [
-        req.body.groupId,
-        req.body.groupId
-      ];
-
-      conn.query(sql, values, (err, data) => {
-        if(err) throw err;
-
-        if(data.affectedRows) {
-          
-          logger.info('USERGROUPS>> User added to this group succesfully');
-          res.status(201);
-          res.json({message:'You already have the access now'});
-
-        }  else {
-          logger.info('USERGROUPS>> User added to this group succesfully but count doesn\'t updated');
-          res.status(200);
-          res.json({message:'You already have the access now'});  
-        }  
-      });
-      
+    if(data[0].affectedRows) {
+      console.log(data);
+      res.status(201).json({message: "You alredy hve the access now", idGrupo: data[1][0].idGrupo});     
     } else {
-      res.status(401);
+      res.status(409);
       res.json({message:'Unknown error in access'});
     }
 
