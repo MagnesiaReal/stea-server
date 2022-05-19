@@ -266,12 +266,13 @@ router.delete('/delete', (req, res)=> {
 // #######################################################
 
 function addActivity(req, res) {
-  const sql = `INSERT INTO GrupoActividad(idGrupo, idActividad, fechaInicio, fechaFin) VALUES(?)`;
+  const sql = `INSERT INTO GrupoActividad(idGrupo, idActividad, fechaInicio, fechaFin, modo) VALUES(?)`;
   const values = [
     req.body.groupId,
     req.body.activityId,
     req.body.initDate,
-    req.body.endDate
+    req.body.endDate,
+    req.body.mode
   ];
 
   conn.query(sql, [values], (err, data)=> {
@@ -367,10 +368,11 @@ router.delete('/remove', (req, res)=> {
 // #######################################################
 
 function updateDate(req, res) { 
-  const sql = `UPDATE GrupoActividad SET fechaInicio=?, fechaFin=? WHERE idGrupoActividad=?`;
+  const sql = `UPDATE GrupoActividad SET fechaInicio=?, fechaFin=?, modo=? WHERE idGrupoActividad=?`;
   const values = [
     req.body.initDate,
     req.body.endDate,
+    req.body.mode,
     req.body.groupActivityId
   ];
 
