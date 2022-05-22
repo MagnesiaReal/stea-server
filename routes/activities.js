@@ -18,7 +18,7 @@ const router = express.Router();
 // #######################################################
 
 router.use((req, res, next) => {
-  logger.info('ACTIVITIESMIDDLEWARE>> verify user again');
+  logger.info('ACTIVITIESMIDDLEWARE>> verify user', req.query, req.body);
   
   const sql = `SELECT * FROM Usuario WHERE idUsuario=? AND uuid=?`;
   let values = [];
@@ -43,7 +43,7 @@ router.use((req, res, next) => {
       logger.info('ACTIVITIESMIDDLEWARE>> User have priviledges to execute these operations, continue...');
       next();// execute the request
     } else {
-      logger.info('User have no privileges to execute this, exit inmediate');
+      logger.info('ACTIVITIESMIDDLEWARE>> User have no privileges to execute this, exit inmediate');
       res.status(401).json({message: 'Middleware says: you have no permissions'});
     }
 

@@ -276,7 +276,7 @@ function insertUserGroup(req, res, accessCredentials) {
 
     if(data[0].affectedRows) {
       console.log(data);
-      res.status(201).json({message: "You alredy hve the access now", idGrupo: data[1][0].idGrupo});     
+      res.status(201).json({message: "You alredy hve the access now", idGrupo: accessCredentials.groupId});     
     } else {
       res.status(409);
       res.json({message:'Unknown error in access'});
@@ -350,7 +350,7 @@ router.get('/allforuser', (req,res)=> {
 // ###################### GET GROUP DATA #################
 // #######################################################
 
-function getGroup(req, res) {
+function getGroup(req, res, userType) {
   logger.info(`Getting group(${req.query.groupId}) info`);
 
   const sql = `SELECT * FROM Grupo WHERE idGrupo=?`;
@@ -364,7 +364,7 @@ function getGroup(req, res) {
     }
 
     if(data.length) {
-      res.status(200).json({message: 'this is the group data', groupData: data[0]});
+      res.status(200).json({message: 'this is the group data', groupData: data[0], userType: userType});
     } else {
       res.status(404).json({message: 'this group doesn\'t exist'});
     }
@@ -387,7 +387,7 @@ router.get('/group', (req, res)=> {
     }
 
     if(data.length) {
-      getGroup(req, res);
+      getGroup(req, res, data[0].tipoUsuario);
     } else {
       res.status(401).json({message: 'This user have no permissions to get groupData'});
     }

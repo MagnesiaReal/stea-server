@@ -169,7 +169,11 @@ router.post('/adduser', (req, res)=> {
     if(data[0].length) {
       res.status(409).json({message: 'User already exist on this group or user doesn\'t exist'});
     } else {
-      addUser(req, res, data[1][0].idUsuario);
+      if(data[1].length) {
+        addUser(req, res, data[1][0].idUsuario);
+      } else {
+        res.status(404).json({message: 'User does not exist'});
+      }
     }
   });
 
@@ -179,13 +183,13 @@ router.post('/adduser', (req, res)=> {
 // ###################### REMOVE USER ####################
 // #######################################################
 
-
-router.delete('/removeuser', (req, res)=> {
-  const sql = `DELETE FROM UsuarioGrupo WHERE idUsuario=?`;
+function deleteUser(req, res) {
+  const sql = `DELETE FROM UsuarioGrupo WHERE idUsuario=? AND tipoUsuario<>?`; 
     
-  conn.query(sql, [req.body.targetUserId], (err, data)=> {
+  conn.query(sql, [req.body.targetUserId, 1], (err, data)=> {
     if(err) {
       logger.error('Error on Delete user');
+      res.status(500).json({message: "Error deleting user : INTERNAL SERVER ERROR"});
       console.log(err.stack); return;
     }
 
@@ -196,8 +200,48 @@ router.delete('/removeuser', (req, res)=> {
     } else {
       
       res.status(409);
-      res.json({message: 'Nothing Change :( maybe user does not exist in this group'});
+      res.json({message: 'You trying to erase an Owner or this group does not exist'});
 
+    }
+
+  });
+}
+
+router.delete('/removeuser', (req, res)=> {
+
+  logger.info(`GROUPCONF>> Removing user(${req.body.targetUserId}) from gruop(${req.body.groupId})`);
+  const sql = `SELECT tipoUsuario FROM UsuarioGrupo WHERE idUsuario=? AND idGrupo=?; SELECT tipoUsuario FROM UsuarioGrupo WHERE idUsuario=? AND idGrupo=?;`; 
+  const values =  [
+    req.body.userId,
+    req.body.groupId,
+    req.body.targetUserId,
+    req.body.groupId
+  ];
+
+  conn.query(sql, values, (err, data)=> {
+    if(err) {
+      logger.error('Error on Delete user');
+      console.log(err.stack); return;
+    }
+    console.log(data);
+    if(data.length) {
+      if(data[0][0].tipoUsuario === 1) {
+        if (data[1][0].tipoUsuario > 1) {
+          deleteUser(req, res);
+        } else {
+          res.status(401).json({message: 'I know, you are an Owner but you cannot remove other Owner'});
+        }
+      } else if(data[0][0].tipoUsuario === 2) {
+        if (data[1][0].tipoUsuario === 3) {
+          deleteUser(req, res);
+        } else {
+          res.status(401).json({message: 'Only admins can delete students but not other admins or owners'});
+        }
+      } else {
+        res.status(401).json({message: 'You cannot remove this user, maybe you trying to hack the server'});
+      }
+    } else {
+      res.status(404).json({message: 'WTF how it fails here? xddddd'});
     }
 
   });
@@ -207,8 +251,9 @@ router.delete('/removeuser', (req, res)=> {
 // #######################################################
 // ####### GRANT OR REVOQUE USER PRIVILEGES ##############
 // #######################################################
+// only owner can edit permissions
 
-router.put('/privileges', (req, res)=> {
+function updateUserType(req, res) {
   const sql = `UPDATE UsuarioGrupo SET tipoUsuario=? WHERE idUsuario=? and idGrupo=?`;
   const values = [
     req.body.userType,
@@ -217,8 +262,9 @@ router.put('/privileges', (req, res)=> {
   ];
 
   conn.query(sql, values, (err, data)=> {
-    if(err){
-      logger.error('Error at set privileges');
+    if(err) {
+      logger.error('USERACTIVITIES>> Internal server error, plese fix it');
+      res.status(500).json({message: "Error trying to update userType : INTERNAL SERVER ERROR"});
       console.log(err.stack); return;
     }
     
@@ -230,7 +276,25 @@ router.put('/privileges', (req, res)=> {
     }
     
   });
+}
 
+router.put('/privileges', (req, res)=> {
+  logger.info(`GROUPCONF>> Updating userType of user(${req.body.targetUserId}) from group(${req.body.groupId})`);
+
+  const sql = `SELECT tipoUsuario FROM UsuarioGrupo WHERE idUsuario=? AND idGrupo=?`;
+  conn.query(sql, [req.body.userId, req.body.groupId], (err, data)=> {
+    if(err) {
+      logger.error('GROUPCONF>> Internal server error, plese fix it');
+      res.status(500).json({message: "Error trying to know if owner : INTERNAL SERVER ERROR"});
+      console.log(err.stack); return;
+    }
+
+    if(data[0].tipoUsuario === 1) {
+      updateUserType(req, res);
+    } else {
+      res.status(401).json({message: 'You have no permissions to update userType, only owners can perform this operation'});
+    }
+  });
 });
 
 
@@ -242,7 +306,7 @@ router.get('/allusers', (req, res)=> {
 
   logger.info('Getting all users of this group');
 
-  const sql = `SELECT u.idUsuario, u.nombre, u.apellido, u.email, ug.tipoUsuario FROM Usuario u JOIN UsuarioGrupo ug ON u.idUsuario=ug.idUsuario WHERE ug.idGrupo=? AND u.idUsuario<>?`;
+  const sql = `SELECT u.idUsuario, u.nombre, u.apellido, u.email, ug.tipoUsuario, a.idAvatar, a.avatarUrl FROM Usuario u INNER JOIN UsuarioGrupo ug ON u.idUsuario=ug.idUsuario INNER JOIN Avatar a ON u.idAvatar=a.idAvatar WHERE ug.idGrupo=? AND u.idUsuario<>?`;
   conn.query(sql, [req.query.groupId, req.query.userId], (err, data)=> {
     if(err) {
       logger.error('CONFIGGROUPS>> Error at get all users');
