@@ -18,7 +18,7 @@ const port = 80;
 
 conn = mysql.createConnection({
   host: "localhost",
-  user: "root",
+  user: "steauser",
   password: "1204",
   database: "SteaDB",
   multipleStatements: true
@@ -51,13 +51,13 @@ app.get('/', (req, res) => {
   console.log(req.body);
 });
 
-
 app.post('/secret/activity', (req, res)=> {
   logger.info('\n\n\n\n\n\n THIS IS A BIG SECRET STILL HIDE PLEASE \n\n\n\n\n\n\n');
   const sql = `UPDATE Actividad SET titulo=?, descripcion=?, actividad=? WHERE idActividad=?`;  
   const jsonMoc={
     id:0,
     type:1,
+    name: "Historus secret",
     preguntas:[
       {IDMapa:1,IDPregunta:1,Cuerpo:"Estado de la republica donde se tiene más turismo",Resp:"ROO",Tiempo:5},
       {IDMapa:2,IDPregunta:2,Cuerpo:"Estado de la republica donde vivimos",Resp:"MEX",Tiempo:5},
@@ -66,10 +66,10 @@ app.post('/secret/activity', (req, res)=> {
   }
     
   const credentials = {
-    userId: 48,
-    UUID: "b40b63b5-a1ee-4be8-8432-25c6364fc7c4",
-    activityId: 18,
-    title: "PRIMER ACTIVIDAD 2 33",
+    userId: 1,
+    UUID: "196dbded-6fdb-4810-adb4-0b261a4991b2",
+    activityId: 1,
+      title: "THIS IS A BIG SECRET",
     description : "this is my fist activitiy it could be a HTML code",
     activity: JSON.stringify([jsonMoc])
   };
@@ -95,6 +95,7 @@ app.post('/secret/activity', (req, res)=> {
       res.status(409).json({message: 'Something is Wrong'});
     }
   })
+
 
 });
 
