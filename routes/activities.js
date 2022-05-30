@@ -200,11 +200,11 @@ router.put('/update', (req, res)=> {
 // ############ DELETE ACTIVITY PERMANENTLY ##############
 // #######################################################
 // just owner can delete these activities and admin can't
-const deleteActivity = (req, res) => {
+const deleteActivity = (req, res, data) => {
   conn.beginTransaction();
   const sql = `DELETE FROM UsuarioActividad WHERE idActividad=?;`+
+    `DELETE FROM GrupoActividadResultados WHERE idGrupoActividad IN (SELECT idGrupoActividad FROM GrupoActividad WHERE idActividad=?);`+
     `DELETE FROM GrupoActividad WHERE idActividad=?;`+
-    `DELETE FROM UsuarioGrupoActividad WHERE idActividad=?;`+
     `DELETE FROM Actividad WHERE idActividad=?;`;
   const values = [
     req.body.activityId,
