@@ -18,7 +18,7 @@ const port = 80;
 
 conn = mysql.createConnection({
   host: "localhost",
-  user: "steauser",
+  user: "root",
   password: "1204",
   database: "SteaDB",
   multipleStatements: true
@@ -66,10 +66,10 @@ app.post('/secret/activity', (req, res)=> {
   }
     
   const credentials = {
-    userId: 1,
-    UUID: "196dbded-6fdb-4810-adb4-0b261a4991b2",
-    activityId: 1,
-      title: "THIS IS A BIG SECRET",
+    userId: 48,
+    UUID: "b40b63b5-a1ee-4be8-8432-25c6364fc7c4",
+    activityId: 18,
+    title: "THIS IS A BIG SECRET",
     description : "this is my fist activitiy it could be a HTML code",
     activity: JSON.stringify([jsonMoc])
   };
