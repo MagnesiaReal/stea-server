@@ -424,7 +424,7 @@ router.put('/updatedate', (req, res)=> {
 router.get('/allforgroup', (req, res)=> {
   
   logger.info(`USERACTIVITIES>> get all activities for group(${req.query.userId}) - START`);
-  const sql = `SELECT aua.idGrupoActividad, aua.idUsuario ,aua.idGrupo, aua.idActividad, aua.titulo, aua.descripcion, aua.fechaInicio, aua.fechaFin, ua.tipoPermiso, gar.idGrupoActividadResultados, gar.calificacion, gar.resultados`+
+  const sql = `SELECT aua.idGrupoActividad, aua.modo, aua.idUsuario ,aua.idGrupo, aua.idActividad, aua.titulo, aua.descripcion, aua.fechaInicio, aua.fechaFin, ua.tipoPermiso, gar.idGrupoActividadResultados, gar.calificacion, gar.resultados`+
     ` FROM AllUsuariosActividades aua LEFT OUTER JOIN UsuarioActividad ua ON aua.idUsuario=ua.idUsuario AND aua.idActividad=ua.idActividad LEFT OUTER JOIN GrupoActividadResultados gar ON aua.idGrupoActividad=gar.idGrupoActividad AND aua.idUsuario=gar.idUsuario WHERE aua.idGrupo=? AND aua.idUsuario=?`;
 
   conn.query(sql, [req.query.groupId, req.query.userId], (err, data)=> {
