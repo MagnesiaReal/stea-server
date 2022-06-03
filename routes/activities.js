@@ -546,7 +546,7 @@ router.get('/activityresolve', (req, res)=> {
 
 
 function getActivityEdit(req, res) {
-  const sql = `SELECT a.*, ga.* FROM Actividad WHERE idActividad=?`;
+  const sql = `SELECT * FROM Actividad WHERE idActividad=?`;
   conn.query(sql, [req.query.activityId], (err, data)=> {
     if(err) {
       logger.error('USERACTIVITIES>> Internal server error, plese fix it');
