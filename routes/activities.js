@@ -525,8 +525,8 @@ function getActivity(req, res) {
 
 router.get('/activityresolve', (req, res)=> {
   logger.info(`ACTIVITIES>> get activityData(${req.query.groupId})`);
-  const sql = `SELECT * FROM AllUsuariosActividades WHERE idActividad=? AND idUsuario=? AND idGrupo=?`;
-  conn.query(sql, [req.query.activityId, req.query.userId, req.query.groupId], (err, data)=> {
+  const sql = `SELECT * FROM AllUsuariosActividades WHERE idUsuario=? AND idGrupoActividad=?`;
+  conn.query(sql, [req.query.userId, req.query.activityGroupId], (err, data)=> {
     if(err) {
       logger.error('USERACTIVITIES>> Internal server error, plese fix it');
       res.status(500);
@@ -534,6 +534,9 @@ router.get('/activityresolve', (req, res)=> {
       console.log(err.stack); return;
     }
     if(data.length) {
+      req.query.activityId = data[0].idActividad;
+      console.log('RES:', req);
+      console.log(data[0]);
       getActivity(req, res);
     } else {
       res.status(401).json({message: 'Unauthorized, you cannot get this activity'});
@@ -904,8 +907,8 @@ function setResults(req, res) {
 
 router.post('/results', (req, res)=> {
   logger.info(`ACTIVITIES>> Receiving result groupActivity(${req.body.groupActivityId}) from user(${req.body.userId})`);
-  const sql = `SELECT * FROM UsuarioGrupo WHERE idUsuario=? AND idGrupo=?; SELECT * FROM GrupoActividadResultados WHERE idUsuario=? AND idGrupoActividad=?`;
-  const values = [req.body.userId, req.body.groupId, req.body.userId, req.body.groupActivityId];
+  const sql = `SELECT * FROM UsuarioGrupo WHERE idUsuario=? AND idGrupo=(SELECT idGrupo FROM GrupoActividad WHERE idGrupoActividad=?); SELECT * FROM GrupoActividadResultados WHERE idUsuario=? AND idGrupoActividad=?`;
+  const values = [req.body.userId, req.body.groupActivityId, req.body.userId, req.body.groupActivityId];
   
   conn.query(sql, values, (err, data)=> {
     if(err) {
