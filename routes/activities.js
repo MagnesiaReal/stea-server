@@ -953,7 +953,7 @@ router.post('/results', (req, res)=> {
 // ############### GET ACTIVITY RESULTS  #################
 // #######################################################
 function getAllResults(req, res) {
-  const sql = `SELECT * FROM GrupoActividadResultados WHERE idGrupoActividad=?`;
+  const sql = `SELECT gar.*, u.nombre, u.apellido FROM GrupoActividadResultados gar INNER JOIN Usuario u ON gar.idUsuario=u.idUsuario WHERE idGrupoActividad=?`;
   conn.query(sql, [req.query.groupActivityId], (err, data)=> {
     if(err) {
       logger.error('USERACTIVITIES>> Internal server error, plese fix it');
