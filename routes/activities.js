@@ -507,8 +507,8 @@ router.get('/allforadmin', (req, res)=> {
 // ############# GET ACTIVITY DATA FOR RESOLVE ###########
 // #######################################################
 function getActivity(req, res) {
-  const sql = `SELECT * FROM Actividad WHERE idActividad=?`;
-  conn.query(sql, [req.query.activityId], (err, data)=> {
+  const sql = `SELECT a.*, ga.* FROM Actividad a INNER JOIN GrupoActividad ga ON ga.idActividad=a.idActividad WHERE idGrupoActividad=?`;
+  conn.query(sql, [req.query.activityGroupId], (err, data)=> {
     if(err) {
       logger.error('USERACTIVITIES>> Internal server error, plese fix it');
       res.status(500);
