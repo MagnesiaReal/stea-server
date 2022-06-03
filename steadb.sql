@@ -28,4 +28,4 @@ CREATE TABLE GrupoActividadResultados(idGrupoActividadResultados INT PRIMARY KEY
 CREATE VIEW PropietarioGrupo AS SELECT g.idGrupo, g.nombre as nombreGrupo, g.grupo, ug.idUsuario, concat(u.nombre, ' ',u.apellido) as nombreUsuario FROM UsuarioGrupo ug, Grupo g, Usuario u WHERE ug.idGrupo=g.idGrupo AND u.idUsuario=ug.idUsuario AND ug.tipoUsuario=1;
 
 -- View for now if user has permissions
-CREATE VIEW AllUsuariosActividades AS SELECT ga.idGrupoActividad, ug.idUsuarioGrupo, ug.idUsuario, ug.idGrupo, a.idActividad, a.titulo, a.descripcion, ga.fechaInicio, ga.fechaFin FROM UsuarioGrupo ug JOIN GrupoActividad ga ON ug.idGrupo=ga.idGrupo JOIN Actividad a ON ga.idActividad=a.idActividad;
+CREATE VIEW AllUsuariosActividades AS SELECT ga.idGrupoActividad, ug.idUsuarioGrupo, ug.idUsuario, ug.idGrupo, a.idActividad, a.titulo, a.descripcion, ga.fechaInicio, ga.fechaFin, ga.modo FROM UsuarioGrupo ug JOIN GrupoActividad ga ON ug.idGrupo=ga.idGrupo JOIN Actividad a ON ga.idActividad=a.idActividad;
