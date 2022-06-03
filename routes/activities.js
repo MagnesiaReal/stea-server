@@ -544,6 +544,24 @@ router.get('/activityresolve', (req, res)=> {
   });
 });
 
+
+function getActivityEdit(req, res) {
+  const sql = `SELECT a.*, ga.* FROM Actividad WHERE idActividad=?`;
+  conn.query(sql, [req.query.activityId], (err, data)=> {
+    if(err) {
+      logger.error('USERACTIVITIES>> Internal server error, plese fix it');
+      res.status(500);
+      res.json({message: "Error getting activity at final step : INTERNAL SERVER ERROR"});
+      console.log(err.stack); return;
+    }
+    if(data.length) {
+      res.status(200).json({message: 'Take the Activity', activityData: data[0]});
+    } else {
+      res.status(409).json({message: 'Hmmm maybe this activity does not exist'});
+    }
+  });
+}
+
 router.get('/activityedit',(req,  res)=> {
   logger.info(`ACTIVITIES>> get activityData(${req.query.groupId}) for edit`);
   const sql = `SELECT * FROM UsuarioActividad WHERE idUsuario=? AND idActividad=?`;
@@ -555,7 +573,7 @@ router.get('/activityedit',(req,  res)=> {
       console.log(err.stack); return;
     }
     if(data.length) {
-      getActivity(req, res);
+      getActivityEdit(req, res);
     } else {
       res.status(401).json({message: 'Unauthorized, you cannot get this activity'});
     }
