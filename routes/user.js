@@ -15,10 +15,11 @@ let timerId = null;
 let timerIdPass = null;
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  service: 'Yahoo',
+  secure: false,
   auth: {
-    user: 'stea.tesis.a003@gmail.com',
-    pass: 'steatesisA003'
+    user: 'stea.tesis@yahoo.com',
+    pass: 'xkehiqvllytqwxvl'
   }
 });
 
@@ -84,7 +85,7 @@ function sendRecoverPassMail(req, res) {
   console.log(recoveryUrl);  
 
   const mailOptions = {
-    from: 'stea.tesis.a003@gmail.com',
+    from: 'stea.tesis@yahoo.com',
     to: req.body.email,
     subject: 'STEA Recover password',
     html: `<h1>Este enlace expirara en 30 minutos !!!!!!</h1><br/> Url de recuperación: ${recoveryUrl}`
@@ -230,7 +231,7 @@ function sendVerificationMail(req, res) {
   
 
   const mailOptions = {
-    from: 'stea.tesis.a003@gmail.com',
+    from: 'stea.tesis@yahoo.com',
     to: req.body.email,
     subject: 'STEA Verification mail',
     text: mailtext
