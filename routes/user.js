@@ -461,7 +461,7 @@ router.get('/avatars', (req, res) => {
 // ################## CHECK USER SESSION #################
 // #######################################################
 router.put('/checksession', (req,res) => {
-  let sql = `SELECT idUsuario FROM Usuario WHERE uuid = ?`;
+  let sql = `SELECT idUsuario, configuracion FROM Usuario WHERE uuid = ?`;
   
   logger.info("CHECKSESSION>> UUID: ", req.body.UUID);
   conn.query(sql, [req.body.UUID], (err,data) => {
@@ -472,7 +472,8 @@ router.put('/checksession', (req,res) => {
       
       res.status(200);
       res.json({
-        message: "It's OK, the user is logged"
+        message: "It's OK, the user is logged",
+        configuracion: data[0].configuracion
       });
 
     } else {

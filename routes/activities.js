@@ -898,7 +898,6 @@ router.get('/allpermissions', (req, res)=> {
 // #######################################################
 // ############## SEND ACTIVITY RESULTS  #################
 // #######################################################
-
 function setResults(req, res) {
   const sql = `INSERT INTO GrupoActividadResultados(idGrupoActividad, idUsuario, calificacion, resultados) VALUES(?)`;
   const values = [
@@ -923,11 +922,72 @@ function setResults(req, res) {
   });
 }
 
+function userRewards(req, res) {
+  const sql = `SELECT * FROM GrupoActividadResultados WHERE idGrupoActividad=?; SELECT * FROM Usuario WHERE idUsuario = ?;`
+
+  conn.query(sql, [req.body.groupActivityId, req.body.userId], (err, data)=> {
+    if(err) {
+      logger.error('USERACTIVITIES>> Internal server error, plese fix it');
+      res.status(500);
+      res.json({message: "Error checking the user position in rank : INTERNAL SERVER ERROR"});
+      console.log(err.stack); return;
+    }
+
+    const rank = data[0].length + 1;
+    let config = JSON.parse(data[1][0].configuracion);
+    if (config === null) config = {};
+    if(rank <= 3) {
+      switch (rank) {
+        case 1:
+          if(config.firstPlace) config.firstPlace++;
+          else config.firstPlace = 1;
+        break;
+        case 2:
+          if(config.secondPlace) config.secondPlace++;
+          else config.secondPlace = 1;
+        break;
+        case 3:
+          if(config.thirdPlace) config.thirdPlace++;
+          else config.thirdPlace = 1;
+        break;
+        default:
+          console.log('Never print this line');
+      }
+      // AQUI DEBERIA IR A LOGISTICA DE UNO O DOS AVATARES PARA LA CALIFICACION FINAL DEL INDIVIDUO
+      // //
+      // //
+      // //
+      // //
+    }
+
+    if(config.xp) config.xp += req.body.qualification/10;
+    else config.xp = req.body.qualification/10;
+    console.log('ESTOY imprimiendo esto as;dlkfjaskl;dfjalsk;dfjakl;sdjfakls;djf: ', config, 'y results :', req.body);
+    const configString = JSON.stringify(config);
+    const sqlUpdate = 'UPDATE Usuario SET configuracion = ? WHERE idUsuario=?';
+    conn.query(sqlUpdate, [configString, req.body.userId], (err, data)=> {
+      if(err) {
+        logger.error('USERACTIVITIES>> Internal server error, plese fix it');
+        res.status(500);
+        res.json({message: "Error updating user configs for rewards : INTERNAL SERVER ERROR"});
+        console.log(err.stack); return;
+      }
+      if(data.affectedRows) {
+        logger.info("Congratulations this user configs has been updated");
+      } else {
+        logger.warn("Wow take care, I dont have to be printed, if yes the failure is in update config user for rewards");
+      }
+      setResults(req, res);
+    });
+
+  });
+}
+
 router.post('/results', (req, res)=> {
   logger.info(`ACTIVITIES>> Receiving result groupActivity(${req.body.groupActivityId}) from user(${req.body.userId})`);
   const sql = `SELECT * FROM UsuarioGrupo WHERE idUsuario=? AND idGrupo=(SELECT idGrupo FROM GrupoActividad WHERE idGrupoActividad=?); SELECT * FROM GrupoActividadResultados WHERE idUsuario=? AND idGrupoActividad=?`;
   const values = [req.body.userId, req.body.groupActivityId, req.body.userId, req.body.groupActivityId];
-  
+
   conn.query(sql, values, (err, data)=> {
     if(err) {
       logger.error('USERACTIVITIES>> Internal server error, plese fix it');
@@ -937,15 +997,13 @@ router.post('/results', (req, res)=> {
     }
 
     if(data[0].length) {
-      if(data[1].length) res.status(409).json({message: 'You cannot resubmit results, hack does not work xd'});
-      else setResults(req, res);
+      if(data[1].length) res.status(409).json({message: 'You cannot resubmit results, I know you want to hack the server xd'});
+      else userRewards(req, res);
     } else {
       res.status(401).json({message: 'You have no permissions to post results cause you are not in this group'});
     }
 
   });
-  
-
 });
 
 
@@ -988,13 +1046,13 @@ router.get('/results', (req, res)=> {
         if(data[1][0].modo == 1) res.status(401).json({message: 'You cannot get this results because you are not an administrator and it is an exam'});
         else getAllResults(req, res);
       }
-      
+
     } else {
       res.status(401).json({message: 'You have no permissions to remove activities from this group'});
     }
 
   });
-  
+
 
 });
 

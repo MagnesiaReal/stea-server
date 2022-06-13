@@ -145,7 +145,7 @@ router.post('/create', (req, res)=> {
 
 function deleteAllData(req, res) {
   conn.beginTransaction();
-  const sql = `DELETE FROM GrupoActividad WHERE idGrupo=?; DELETE FROM GrupoActividadResultados WHERE idGrupoActividad IN (SELECT ga.idGrupoActividad FROM GrupoActividad ga WHERE ga.idGrupo=?); DELETE FROM UsuarioGrupo WHERE idGrupo=?; DELETE FROM Grupo WHERE idGrupo=?`;
+  const sql = `DELETE FROM GrupoActividadResultados WHERE idGrupoActividad IN (SELECT ga.idGrupoActividad FROM GrupoActividad ga WHERE ga.idGrupo=?); DELETE FROM GrupoActividad WHERE idGrupo=?; DELETE FROM UsuarioGrupo WHERE idGrupo=?; DELETE FROM Grupo WHERE idGrupo=?`;
 
   const chain = [
     req.body.groupId,
@@ -171,8 +171,6 @@ function deleteAllData(req, res) {
 
   });
   
-
-
 }
 
 router.delete('/delete', (req, res) => {
