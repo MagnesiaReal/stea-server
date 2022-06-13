@@ -898,7 +898,7 @@ router.get('/allpermissions', (req, res)=> {
 // #######################################################
 // ############## SEND ACTIVITY RESULTS  #################
 // #######################################################
-function setResults(req, res) {
+function setResults(req, res, extra) {
   const sql = `INSERT INTO GrupoActividadResultados(idGrupoActividad, idUsuario, calificacion, resultados) VALUES(?)`;
   const values = [
     req.body.groupActivityId,
@@ -915,7 +915,7 @@ function setResults(req, res) {
     }
 
     if(data.affectedRows) {
-      res.status(201).json({message: 'Results has been submitted'});
+      res.status(201).json({message: 'Results has been submitted', extra: extra});
     } else {
       res.status(409).json({message: 'We cannot submit this results'});
     }
@@ -934,6 +934,7 @@ function userRewards(req, res) {
     }
 
     const rank = data[0].length + 1;
+    let extra = {rank: rank};
     let config = JSON.parse(data[1][0].configuracion);
     if (config === null) config = {};
     if(rank <= 3) {
@@ -962,7 +963,9 @@ function userRewards(req, res) {
 
     if(config.xp) config.xp += req.body.qualification/10;
     else config.xp = req.body.qualification/10;
-    console.log('ESTOY imprimiendo esto as;dlkfjaskl;dfjalsk;dfjakl;sdjfakls;djf: ', config, 'y results :', req.body);
+    extra.xp = req.body.qualification/10;
+    extra.grade = req.body.qualification;
+    extra = JSON.stringify(extra);
     const configString = JSON.stringify(config);
     const sqlUpdate = 'UPDATE Usuario SET configuracion = ? WHERE idUsuario=?';
     conn.query(sqlUpdate, [configString, req.body.userId], (err, data)=> {
@@ -977,7 +980,7 @@ function userRewards(req, res) {
       } else {
         logger.warn("Wow take care, I dont have to be printed, if yes the failure is in update config user for rewards");
       }
-      setResults(req, res);
+      setResults(req, res, extra);
     });
 
   });
@@ -1011,7 +1014,7 @@ router.post('/results', (req, res)=> {
 // ############### GET ACTIVITY RESULTS  #################
 // #######################################################
 function getAllResults(req, res) {
-  const sql = `SELECT gar.*, u.nombre, u.apellido FROM GrupoActividadResultados gar INNER JOIN Usuario u ON gar.idUsuario=u.idUsuario WHERE idGrupoActividad=?`;
+  const sql = `SELECT gar.*, u.nombre, u.apellido, u.idAvatar FROM GrupoActividadResultados gar INNER JOIN Usuario u ON gar.idUsuario=u.idUsuario WHERE idGrupoActividad=?`;
   conn.query(sql, [req.query.groupActivityId], (err, data)=> {
     if(err) {
       logger.error('USERACTIVITIES>> Internal server error, plese fix it');
