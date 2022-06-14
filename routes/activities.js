@@ -852,7 +852,7 @@ router.delete('/deletepermission', (req, res)=> {
 // #######################################################
 
 function readPermissions(req, res) {
-  const sql = `SELECT * FROM UsuarioActividad WHERE idActividad=? AND idUsuario<>?`;
+  const sql = `SELECT ua.*, u.nombre, u.apellido, u.idAvatar FROM UsuarioActividad ua, Usuario u WHERE ua.idUsuario=u.idUsuario AND ua.idActividad=? AND ua.idUsuario<>?`;
   conn.query(sql, [req.query.activityId, req.query.userId], (err, data)=> {
     if(err) { 
       logger.error('ACTIVITIES>> Internal server error, please fix it');
