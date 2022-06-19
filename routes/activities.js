@@ -1014,7 +1014,9 @@ router.post('/results', (req, res)=> {
 // ############### GET ACTIVITY RESULTS  #################
 // #######################################################
 function getAllResults(req, res) {
-  const sql = `SELECT gar.*, u.nombre, u.apellido, u.idAvatar FROM GrupoActividadResultados gar INNER JOIN Usuario u ON gar.idUsuario=u.idUsuario WHERE idGrupoActividad=?`;
+  const sql = 'SELECT u.nombre, u.apellido, u.idAvatar, gar.* FROM Usuario u LEFT OUTER JOIN GrupoActividadResultados gar ON'+
+    ' u.idUsuario=gar.idUsuario WHERE u.idUsuario IN (SELECT ug.idUsuario FROM UsuarioGrupo ug WHERE ug.idGrupo=(SELECT ga.idGrupo FROM GrupoActividad ga WHERE ga.idGrupoActividad=?))';
+  // const sql = `SELECT gar.*, u.nombre, u.apellido, u.idAvatar FROM GrupoActividadResultados gar INNER JOIN Usuario u ON gar.idUsuario=u.idUsuario WHERE idGrupoActividad=?`;
   conn.query(sql, [req.query.groupActivityId], (err, data)=> {
     if(err) {
       logger.error('USERACTIVITIES>> Internal server error, plese fix it');
@@ -1031,7 +1033,7 @@ function getAllResults(req, res) {
 }
 
 router.get('/results', (req, res)=> {
-  logger.info(`ACTIVITIES>> Get all results if you can from user(${req.query.userId})`);
+  logger.info(`ACTIVITIES>> Get all results if you can from user(${req.query.userId}) groupactivityId=(${req.query.groupActivityId})`);
   const sql = `SELECT * FROM UsuarioGrupo WHERE idUsuario=? AND idGrupo=?; SELECT modo FROM GrupoActividad WHERE idGrupoActividad=?; SELECT tipoPermiso FROM UsuarioActividad WHERE idUsuario=? AND idActividad=?`;
   const values = [req.query.userId, req.query.groupId, req.query.groupActivityId, req.query.userId, req.query.activityId];
   conn.query(sql, values, (err, data)=> {
@@ -1057,6 +1059,33 @@ router.get('/results', (req, res)=> {
   });
 
 
+});
+
+router.get('/resultsbyuser', (req, res)=> {
+  logger.info(`ACTIVITIES>> [${req.query.UUID}] Get all results for user(${req.body.targetUserId})`);
+  const sql = 'SELECT * FROM UsuarioGrupo WHERE idUsuario=? AND idGrupo=?;'+
+    " SELECT aua.idGrupoActividad, aua.idUsuarioGrupo, aua.idGrupo, aua.idActividad, aua.titulo, aua.modo, aua.idUsuario, gar.calificacion, gar.resultados, u.idAvatar, concat(u.nombre,' ', u.apellido) as nombreUsuario FROM AllUsuariosActividades aua INNER JOIN Usuario u ON aua.idUsuario=u.idUsuario LEFT OUTER JOIN GrupoActividadResultados gar ON aua.idGrupoActividad=gar.idGrupoActividad  AND aua.idUsuario=gar.idUsuario WHERE aua.idGrupo=? AND aua.IdUsuario=?;";
+  const values = [
+    req.query.userId,
+    req.query.groupId,
+    req.query.groupId,
+    req.query.targetUserId
+  ];
+  conn.query(sql, values, (err, data)=> {
+    if(err) {
+      logger.error('USERACTIVITIES>> Internal server error, plese fix it');
+      res.status(500);
+      res.json({message: "Error checking if user is in this group : INTERNAL SERVER ERROR"});
+      console.log(err.stack); return;
+    }
+
+    if(data[0].length && data[0][0].tipoUsuario <= 2) {
+      if(data[1].length) res.status(200).json({message: "Take user rallys evaluations", resultList: data[1]});
+      else res.status(204).send();
+    } else {
+      res.status(401).json({message: "You have no permissions to read targetUser evaluations"});
+    }
+  });
 });
 
 
